@@ -81,14 +81,40 @@ const DEF={
     {name:"Trizeps Rope Pushdown",sets:3,group:"Trizeps"},
     {name:"Brust Kabel/Maschine",sets:4,group:"Brust"},
   ]}],
-  history:[],prs:{},bodyweight:[],weekGoal:3
+  history:[],prs:{},bodyweight:[],weekGoal:3,theme:"dark"
 };
 
-const C={
-  bg:"#0A0A0A",surface:"#141414",surface2:"#1E1E1E",border:"#252525",
-  text:"#F0F0F0",muted:"#555",muted2:"#888",
-  yellow:"#E8FF47",green:"#47FFC8",red:"#FF4747",blue:"#47B8FF",orange:"#FF8C47"
+const THEMES={
+  dark:{
+    bg:"#0A0A0A",surface:"#141414",surface2:"#1E1E1E",border:"#252525",
+    text:"#F0F0F0",muted:"#555",muted2:"#888",
+    yellow:"#E8FF47",green:"#47FFC8",red:"#FF4747",blue:"#47B8FF",orange:"#FF8C47",
+    modal:"#111111",navBg:"#0D0D0D",badgeBg:"rgba(255,255,255,0.07)",
+    name:"Dark",icon:"🌑"
+  },
+  light:{
+    bg:"#F2F2F7",surface:"#FFFFFF",surface2:"#E5E5EA",border:"#C8C8CE",
+    text:"#111111",muted:"#AAAAAA",muted2:"#666666",
+    yellow:"#8A6E00",green:"#007A5A",red:"#CC2222",blue:"#1870CC",orange:"#C05000",
+    modal:"#FFFFFF",navBg:"#F8F8FC",badgeBg:"rgba(0,0,0,0.07)",
+    name:"Light",icon:"☀️"
+  },
+  midnight:{
+    bg:"#090D1A",surface:"#111827",surface2:"#1A2535",border:"#243048",
+    text:"#E8F0FF",muted:"#3A4A60",muted2:"#5A7090",
+    yellow:"#FFD700",green:"#48BB78",red:"#FC8181",blue:"#63B3ED",orange:"#F6AD55",
+    modal:"#0D1520",navBg:"#070C16",badgeBg:"rgba(255,255,255,0.07)",
+    name:"Midnight",icon:"🌙"
+  },
+  forest:{
+    bg:"#0A1A0E",surface:"#122018",surface2:"#1A2E20",border:"#2A3D2A",
+    text:"#E8F5E9",muted:"#3A5040",muted2:"#5A7860",
+    yellow:"#C8FF47",green:"#69F0AE",red:"#FF5252",blue:"#40C4FF",orange:"#FFAB40",
+    modal:"#0D1A10",navBg:"#081208",badgeBg:"rgba(255,255,255,0.07)",
+    name:"Forest",icon:"🌲"
+  },
 };
+let C=THEMES.dark;
 
 const fmtTime=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
 const fmtDate=ts=>new Date(ts).toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"});
@@ -180,12 +206,12 @@ function ExerciseInput({value,onChange}){
         autoComplete="off"
       />
       {open&&filtered.length>0&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#1C1C1C",border:`1px solid ${C.border}`,borderRadius:10,zIndex:999,maxHeight:230,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.6)"}}>
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,zIndex:999,maxHeight:230,overflowY:"auto",boxShadow:"0 8px 24px rgba(0,0,0,0.6)"}}>
           {filtered.map((ex,i)=>(
             <div key={i} onMouseDown={()=>{onChange(ex.name);setOpen(false);}}
               style={{padding:"10px 14px",borderBottom:i<filtered.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
               <span style={{fontSize:13,color:C.text}}>{ex.name}</span>
-              <span style={{fontSize:9,color:GROUP_COLORS[ex.group]||C.muted,background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 7px",letterSpacing:1}}>{ex.group.toUpperCase()}</span>
+              <span style={{fontSize:9,color:GROUP_COLORS[ex.group]||C.muted,background:C.badgeBg,borderRadius:4,padding:"2px 7px",letterSpacing:1}}>{ex.group.toUpperCase()}</span>
             </div>
           ))}
         </div>
@@ -197,12 +223,13 @@ function ExerciseInput({value,onChange}){
 /* ── Muscle group badge ── */
 function GroupBadge({group}){
   if(!group)return null;
-  return<span style={{fontSize:9,color:GROUP_COLORS[group]||C.muted,background:"rgba(255,255,255,0.06)",borderRadius:4,padding:"2px 6px",letterSpacing:1,whiteSpace:"nowrap"}}>{group.toUpperCase()}</span>;
+  return<span style={{fontSize:9,color:GROUP_COLORS[group]||C.muted,background:C.badgeBg,borderRadius:4,padding:"2px 6px",letterSpacing:1,whiteSpace:"nowrap"}}>{group.toUpperCase()}</span>;
 }
 
 /* ── Main App ── */
 function App(){
   const [db,setDb]=useState(()=>{try{const d=JSON.parse(localStorage.getItem(SK));return d?{...DEF,...d}:DEF;}catch{return DEF;}});
+  C=THEMES[db.theme||"dark"];
   const [page,setPage]=useState("home");
   const [aw,setAw]=useState(null);
   const [wSecs,setWSecs]=useState(0);
@@ -226,6 +253,7 @@ function App(){
   const tRef=useRef(null);
 
   useEffect(()=>{try{localStorage.setItem(SK,JSON.stringify(db));}catch{}},[db]);
+  useEffect(()=>{document.body.style.background=C.bg;},[db.theme]);
 
   useEffect(()=>{
     if(aw){wRef.current=setInterval(()=>setWSecs(s=>s+1),1000);}
@@ -474,7 +502,7 @@ function App(){
       {/* PROGRESS MODAL */}
       {progEx&&(
         <div onClick={()=>setProgEx(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.93)",zIndex:180,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div className="modal-enter" onClick={e=>e.stopPropagation()} style={{background:"#111",borderRadius:"18px 18px 0 0",width:"100%",maxWidth:430,padding:"24px 20px 40px",maxHeight:"85vh",overflowY:"auto"}}>
+          <div className="modal-enter" onClick={e=>e.stopPropagation()} style={{background:C.modal,borderRadius:"18px 18px 0 0",width:"100%",maxWidth:430,padding:"24px 20px 40px",maxHeight:"85vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
               <div>
                 <div style={{fontSize:16,fontWeight:700}}>{progEx}</div>
@@ -500,7 +528,7 @@ function App(){
       {/* MAIN MODAL */}
       {modal&&(
         <div onClick={()=>setModal(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:150,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-          <div className="modal-enter" onClick={e=>e.stopPropagation()} style={{background:"#111",borderRadius:"18px 18px 0 0",width:"100%",maxWidth:430,padding:"24px 20px 40px",maxHeight:"90vh",overflowY:"auto"}}>
+          <div className="modal-enter" onClick={e=>e.stopPropagation()} style={{background:C.modal,borderRadius:"18px 18px 0 0",width:"100%",maxWidth:430,padding:"24px 20px 40px",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:20}}>
               <div style={{fontSize:16,fontWeight:700}}>
                 {modal==="day"?"Trainingstag erstellen":
@@ -553,6 +581,20 @@ function App(){
             </>}
 
             {modal==="settings"&&<>
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>DESIGN / THEME</label>
+                <div style={{display:"flex",gap:8}}>
+                  {Object.entries(THEMES).map(([key,th])=>{
+                    const active=(db.theme||"dark")===key;
+                    return(
+                      <button key={key} onClick={()=>setDb(d=>({...d,theme:key}))} style={{flex:1,background:active?th.yellow:C.surface2,color:active?"#000":C.muted2,borderRadius:10,padding:"10px 6px",fontSize:10,fontWeight:700,border:`1px solid ${active?th.yellow:C.border}`,cursor:"pointer",fontFamily:"inherit",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                        <span style={{fontSize:18}}>{th.icon}</span>
+                        <span>{th.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <button onClick={()=>{exportData();setModal(null);}} style={{...btnBase,background:C.yellow,color:"#000",margin:"0 0 8px",width:"100%"}}>📤 DATEN EXPORTIEREN</button>
               <button onClick={()=>{importData();setModal(null);}} style={{...btnBase,background:C.surface2,color:C.text,margin:"0 0 8px",width:"100%"}}>📥 DATEN IMPORTIEREN</button>
               <div style={{marginBottom:14,marginTop:8}}>
@@ -874,7 +916,7 @@ function App(){
       </>}
 
       {/* ── NAV (fixed) ── */}
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#0D0D0D",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100,padding:"8px 0 max(12px, env(safe-area-inset-bottom))"}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.navBg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100,padding:"8px 0 max(12px, env(safe-area-inset-bottom))"}}>
         {[{id:"home",label:"PLÄNE",icon:"🏠"},{id:"workout",label:"TRAINING",icon:"⏱"},{id:"history",label:"VERLAUF",icon:"📋"},{id:"pr",label:"PRs",icon:"📈"}].map(n=>(
           <button key={n.id} onClick={()=>setPage(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"transparent",border:"none",color:page===n.id?C.yellow:C.muted,fontSize:8,letterSpacing:1,padding:"4px 0",cursor:"pointer",fontFamily:"inherit",transition:"color 0.2s"}}>
             <span style={{fontSize:20,lineHeight:1}}>{n.icon}</span>
