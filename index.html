@@ -272,6 +272,7 @@ function App(){
   const [prFlash,setPrFlash]=useState(false);
   const [notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
   const reqNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
+  const [timerDone,setTimerDone]=useState(false);
   const wRef=useRef(null);
   const tRef=useRef(null);
   const tEndRef=useRef(null);
@@ -291,8 +292,9 @@ function App(){
         const rem=Math.ceil((tEndRef.current-Date.now())/1000);
         if(rem<=0){
           clearInterval(tRef.current);setTRunning(false);setTSecs(0);
+          setTimerDone(true);
           try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch{}
-          playBeep();showNotif();
+          showNotif();
         }else{setTSecs(rem);}
       };
       tRef.current=setInterval(tick,500);
@@ -306,8 +308,9 @@ function App(){
         const rem=Math.ceil((tEndRef.current-Date.now())/1000);
         if(rem<=0){
           clearInterval(tRef.current);setTRunning(false);setTSecs(0);
+          setTimerDone(true);
           try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch{}
-          playBeep();showNotif();
+          showNotif();
         }else{setTSecs(rem);}
       }
     };
@@ -522,6 +525,16 @@ function App(){
       {/* TOAST */}
       {toast&&(
         <div className="toast-enter" style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:C.green,color:"#000",borderRadius:10,padding:"10px 22px",fontSize:13,fontWeight:700,zIndex:300,whiteSpace:"nowrap",boxShadow:"0 4px 24px rgba(0,0,0,0.6)"}}>{toast}</div>
+      )}
+
+      {/* PAUSE DONE OVERLAY */}
+      {timerDone&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.97)",zIndex:250,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{fontSize:80,marginBottom:16,animation:"prPop 0.4s ease-out"}}>⏰</div>
+          <div style={{fontSize:30,fontWeight:700,color:C.green,letterSpacing:-1,marginBottom:8,textAlign:"center"}}>Pause vorbei!</div>
+          <div style={{fontSize:14,color:C.muted,marginBottom:50,textAlign:"center"}}>Bereit für den nächsten Satz?</div>
+          <button onClick={()=>{playBeep();setTimerDone(false);}} style={{background:C.green,color:"#000",borderRadius:16,padding:"20px 70px",fontSize:20,fontWeight:700,border:"none",cursor:"pointer",fontFamily:"inherit",letterSpacing:1}}>WEITER 💪</button>
+        </div>
       )}
 
       {/* TIMER OVERLAY */}
