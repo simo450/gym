@@ -375,8 +375,8 @@ function App(){
     const s=aw.exercises[ei].sets[si];
     const ls=getLastSet(aw.exercises[ei].name);
     setCurEx(ei);setCurSet(si);
-    setSw(s.weight||(s.done?""):ls?.weight||"");
-    setSr(s.reps||(s.done?""):ls?.reps||"");
+    setSw(s.weight||(s.done?"":ls?.weight||""));
+    setSr(s.reps||(s.done?"":ls?.reps||""));
     setModal("set");
   };
 
