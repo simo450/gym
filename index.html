@@ -274,6 +274,7 @@ function App(){
   const reqNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
   const wRef=useRef(null);
   const tRef=useRef(null);
+  const tEndRef=useRef(null);
 
   useEffect(()=>{try{localStorage.setItem(SK,JSON.stringify(db));}catch{}},[db]);
   useEffect(()=>{document.body.style.background=C.bg;},[db.theme]);
@@ -286,17 +287,32 @@ function App(){
 
   useEffect(()=>{
     if(tRunning){
-      tRef.current=setInterval(()=>setTSecs(s=>{
-        if(s<=1){
-          clearInterval(tRef.current);setTRunning(false);
+      const tick=()=>{
+        const rem=Math.ceil((tEndRef.current-Date.now())/1000);
+        if(rem<=0){
+          clearInterval(tRef.current);setTRunning(false);setTSecs(0);
           try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch{}
           playBeep();showNotif();
-          return 0;
-        }
-        return s-1;
-      }),1000);
+        }else{setTSecs(rem);}
+      };
+      tRef.current=setInterval(tick,500);
     }
     return()=>clearInterval(tRef.current);
+  },[tRunning]);
+
+  useEffect(()=>{
+    const onVisible=()=>{
+      if(document.visibilityState==="visible"&&tEndRef.current&&tRunning){
+        const rem=Math.ceil((tEndRef.current-Date.now())/1000);
+        if(rem<=0){
+          clearInterval(tRef.current);setTRunning(false);setTSecs(0);
+          try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch{}
+          playBeep();showNotif();
+        }else{setTSecs(rem);}
+      }
+    };
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>document.removeEventListener("visibilitychange",onVisible);
   },[tRunning]);
 
   const showToast=msg=>{setToast(msg);setTimeout(()=>setToast(null),2500);};
@@ -465,7 +481,7 @@ function App(){
     }
     setAw(w=>({...w,exercises:w.exercises.map((ex,ei)=>ei!==curEx?ex:{...ex,sets:ex.sets.map((s,si)=>si!==curSet?s:{weight:sw,reps:sr,done:true,isPR})})}));
     setModal(null);
-    if(startTimerSec){setTSecs(startTimerSec);setTRunning(true);setShowTimer(true);}
+    if(startTimerSec){tEndRef.current=Date.now()+startTimerSec*1000;setTSecs(startTimerSec);setTRunning(true);setShowTimer(true);}
   };
 
   const finishWorkout=()=>{
@@ -516,7 +532,7 @@ function App(){
           <div style={{fontSize:11,letterSpacing:3,marginTop:8,color:tSecs>0?C.muted:C.green,transition:"color 0.4s"}}>{tSecs>0?"läuft...":"✓ fertig!"}</div>
           <div style={{display:"flex",gap:10,marginTop:30,flexWrap:"wrap",justifyContent:"center"}}>
             {[60,90,120,150].map(t=>(
-              <button key={t} onClick={()=>{clearInterval(tRef.current);setTSecs(t);setTRunning(true);}} style={{background:C.surface2,color:C.muted2,borderRadius:8,padding:"10px 18px",fontSize:12,fontFamily:"inherit",cursor:"pointer",border:`1px solid ${C.border}`}}>{fmtTime(t)}</button>
+              <button key={t} onClick={()=>{clearInterval(tRef.current);tEndRef.current=Date.now()+t*1000;setTSecs(t);setTRunning(true);}} style={{background:C.surface2,color:C.muted2,borderRadius:8,padding:"10px 18px",fontSize:12,fontFamily:"inherit",cursor:"pointer",border:`1px solid ${C.border}`}}>{fmtTime(t)}</button>
             ))}
           </div>
           <button onClick={()=>{clearInterval(tRef.current);setShowTimer(false);setTRunning(false);}} style={{marginTop:22,background:C.red,color:"#fff",borderRadius:10,padding:"13px 40px",fontSize:14,fontWeight:700,fontFamily:"inherit",cursor:"pointer",border:"none"}}>FERTIG</button>
@@ -827,7 +843,7 @@ function App(){
                   <button onClick={()=>moveEx(ei,-1)} style={{background:C.surface2,color:C.muted2,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>↑</button>
                   <button onClick={()=>moveEx(ei,1)} style={{background:C.surface2,color:C.muted2,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>↓</button>
                   <button onClick={()=>setProgEx(ex.name)} style={{background:C.surface2,color:C.blue,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>📈</button>
-                  <button onClick={()=>{setTSecs(90);setTRunning(true);setShowTimer(true);}} style={{background:C.surface2,color:C.muted2,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>⏱</button>
+                  <button onClick={()=>{tEndRef.current=Date.now()+90*1000;setTSecs(90);setTRunning(true);setShowTimer(true);}} style={{background:C.surface2,color:C.muted2,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>⏱</button>
                   <button onClick={()=>{if(confirm("Übung entfernen?"))setAw(w=>({...w,exercises:w.exercises.filter((_,i)=>i!==ei)}));}} style={{background:C.surface2,color:C.muted2,borderRadius:6,padding:"4px 7px",fontSize:11,border:"none",cursor:"pointer"}}>🗑</button>
                 </div>
               </div>
