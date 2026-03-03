@@ -25,6 +25,14 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 </head>
 <body>
 <div id="root"></div>
+<div id="err" style="display:none;color:#ff4747;background:#1a0000;padding:20px;font-family:monospace;font-size:12px;position:fixed;top:0;left:0;right:0;z-index:9999;white-space:pre-wrap;max-height:50vh;overflow:auto"></div>
+<script>
+window.onerror=function(msg,src,line,col,err){
+  var d=document.getElementById('err');
+  d.style.display='block';
+  d.textContent='FEHLER Zeile '+line+':\n'+msg+'\n\n'+(err&&err.stack?err.stack:'');
+};
+</script>
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo}=React;
 const SK="gymlog_v6";
