@@ -122,6 +122,27 @@ const fmtDateFull=ts=>new Date(ts).toLocaleDateString("de-DE",{day:"2-digit",mon
 const getWeekKey=ts=>{const d=new Date(ts);const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return d.toISOString().split("T")[0];};
 const getGroupForName=name=>EXERCISE_DB.find(e=>e.name===name)?.group;
 
+function playBeep(){
+  try{
+    const ac=new(window.AudioContext||window.webkitAudioContext)();
+    [0,0.3,0.6].forEach(offset=>{
+      const o=ac.createOscillator();const g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.frequency.value=880;
+      g.gain.setValueAtTime(0.3,ac.currentTime+offset);
+      g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+offset+0.25);
+      o.start(ac.currentTime+offset);o.stop(ac.currentTime+offset+0.25);
+    });
+  }catch{}
+}
+function showNotif(){
+  try{
+    if(typeof Notification!=="undefined"&&Notification.permission==="granted"){
+      new Notification("GymLog – Pause vorbei! 💪",{body:"Bereit für den nächsten Satz!"});
+    }
+  }catch{}
+}
+
 /* ── MiniChart (line) ── */
 function MiniChart({data,color=C.yellow,unit="kg"}){
   if(!data||data.length<2)return<div style={{fontSize:11,color:C.muted,padding:"12px 0"}}>Noch zu wenig Daten!</div>;
@@ -249,6 +270,8 @@ function App(){
   const [toast,setToast]=useState(null);
   const [bwInput,setBwInput]=useState("");
   const [prFlash,setPrFlash]=useState(false);
+  const [notifPerm,setNotifPerm]=useState(typeof Notification!=="undefined"?Notification.permission:"unsupported");
+  const reqNotif=async()=>{if(typeof Notification==="undefined")return;const p=await Notification.requestPermission();setNotifPerm(p);};
   const wRef=useRef(null);
   const tRef=useRef(null);
 
@@ -267,6 +290,7 @@ function App(){
         if(s<=1){
           clearInterval(tRef.current);setTRunning(false);
           try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch{}
+          playBeep();showNotif();
           return 0;
         }
         return s-1;
@@ -594,6 +618,17 @@ function App(){
                     );
                   })}
                 </div>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={lbl}>BENACHRICHTIGUNGEN (Pause-Timer)</label>
+                {notifPerm==="unsupported"
+                  ?<div style={{fontSize:12,color:C.muted2,lineHeight:1.6}}>Nur als installierte App nutzbar.<br/>Safari → Teilen → „Zum Home-Bildschirm" (iOS 16.4+)</div>
+                  :notifPerm==="granted"
+                  ?<div style={{color:C.green,fontSize:13,fontWeight:700}}>🔔 Aktiviert</div>
+                  :notifPerm==="denied"
+                  ?<div style={{color:C.red,fontSize:12}}>Blockiert – in iOS-Einstellungen aktivieren</div>
+                  :<button onClick={reqNotif} style={{...btnBase,background:C.surface2,color:C.text,margin:"0",width:"100%"}}>🔔 BENACHRICHTIGUNGEN ERLAUBEN</button>
+                }
               </div>
               <button onClick={()=>{exportData();setModal(null);}} style={{...btnBase,background:C.yellow,color:"#000",margin:"0 0 8px",width:"100%"}}>📤 DATEN EXPORTIEREN</button>
               <button onClick={()=>{importData();setModal(null);}} style={{...btnBase,background:C.surface2,color:C.text,margin:"0 0 8px",width:"100%"}}>📥 DATEN IMPORTIEREN</button>
