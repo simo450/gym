@@ -36,6 +36,37 @@ window.onerror=function(msg,src,line,col,err){
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo}=React;
 const SK="gymlog_v6";
+const SK_AW="gymlog_activeworkout";
+
+/* ── Robuste Speicherung: localStorage + IndexedDB Backup ── */
+const DB_NAME="GymLogDB",DB_STORE="data",DB_VER=1;
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=e=>e.target.result.createObjectStore(DB_STORE);
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbSet(key,val){
+  try{const db=await openIDB();const tx=db.transaction(DB_STORE,"readwrite");tx.objectStore(DB_STORE).put(val,key);}catch{}
+}
+async function idbGet(key){
+  try{const db=await openIDB();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,"readonly");const r=tx.objectStore(DB_STORE).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);});}catch{return null;}
+}
+function saveData(key,val){
+  try{localStorage.setItem(key,JSON.stringify(val));}catch{}
+  idbSet(key,JSON.stringify(val));
+}
+async function loadData(key,fallback){
+  try{
+    const ls=localStorage.getItem(key);
+    if(ls){const parsed=JSON.parse(ls);await idbSet(key,ls);return parsed;}
+    const idb=await idbGet(key);
+    if(idb){localStorage.setItem(key,idb);return JSON.parse(idb);}
+  }catch{}
+  return fallback;
+}
 
 /* ── Exercise database ── */
 const EXERCISE_DB=[
@@ -252,7 +283,7 @@ function App(){
   const [db,setDb]=useState(()=>{try{const d=JSON.parse(localStorage.getItem(SK));return d?{...DEF,...d}:DEF;}catch{return DEF;}});
   C=THEMES[db.theme||"dark"];
   const [page,setPage]=useState("home");
-  const [aw,setAw]=useState(null);
+  const [aw,setAw]=useState(()=>{try{const d=JSON.parse(localStorage.getItem(SK_AW));return d||null;}catch{return null;}});
   const [wSecs,setWSecs]=useState(0);
   const [modal,setModal]=useState(null);
   const [tSecs,setTSecs]=useState(0);
@@ -277,7 +308,32 @@ function App(){
   const tRef=useRef(null);
   const tEndRef=useRef(null);
 
-  useEffect(()=>{try{localStorage.setItem(SK,JSON.stringify(db));}catch{}},[db]);
+  /* ── Robustes Speichern: localStorage + IndexedDB bei jeder Änderung ── */
+  useEffect(()=>{saveData(SK,db);},[db]);
+  /* ── Aktives Training speichern (Zwischenstand) ── */
+  useEffect(()=>{
+    if(aw){saveData(SK_AW,aw);}
+    else{
+      try{localStorage.removeItem(SK_AW);}catch{}
+      idbSet(SK_AW,"null");
+    }
+  },[aw]);
+  /* ── Beim App-Start: IndexedDB als Fallback laden ── */
+  useEffect(()=>{
+    (async()=>{
+      try{
+        if(!localStorage.getItem(SK)){
+          const idbData=await loadData(SK,null);
+          if(idbData)setDb({...DEF,...idbData});
+        }
+        const savedAw=await loadData(SK_AW,null);
+        if(savedAw&&savedAw!=="null"&&savedAw!==null&&!localStorage.getItem(SK_AW)){
+          setAw(savedAw);setPage("workout");
+        }
+      }catch{}
+    })();
+  },[]);
+
   useEffect(()=>{document.body.style.background=C.bg;},[db.theme]);
 
   useEffect(()=>{
@@ -816,6 +872,7 @@ function App(){
             <div>
               <div style={{fontSize:10,color:C.muted,letterSpacing:3,marginBottom:4}}>{fmtDateFull(aw?.startTime||Date.now())}</div>
               <div style={{fontSize:22,fontWeight:700,letterSpacing:-1}}>{aw?.dayName||"–"}</div>
+              <div style={{fontSize:9,color:"#47FFC8",marginTop:4,letterSpacing:1}}>● WIRD AUTOMATISCH GESPEICHERT</div>
             </div>
             <div style={{textAlign:"right"}}>
               <div style={{fontSize:22,fontWeight:700,color:C.yellow,fontVariantNumeric:"tabular-nums"}}>{fmtTime(wSecs)}</div>
@@ -981,9 +1038,14 @@ function App(){
 
       {/* ── NAV (fixed) ── */}
       <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:C.navBg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100,padding:"8px 0 max(12px, env(safe-area-inset-bottom))"}}>
-        {[{id:"home",label:"PLÄNE",icon:"🏠"},{id:"workout",label:"TRAINING",icon:"⏱"},{id:"history",label:"VERLAUF",icon:"📋"},{id:"pr",label:"PRs",icon:"📈"}].map(n=>(
+        {[
+          {id:"home",label:"PLÄNE",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>},
+          {id:"workout",label:"TRAINING",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>},
+          {id:"history",label:"VERLAUF",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="17" y2="18"/></svg>},
+          {id:"pr",label:"PRs",svg:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 9 12 13 16 20 7"/><polyline points="15 7 20 7 20 12"/></svg>},
+        ].map(n=>(
           <button key={n.id} onClick={()=>setPage(n.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,background:"transparent",border:"none",color:page===n.id?C.yellow:C.muted,fontSize:8,letterSpacing:1,padding:"4px 0",cursor:"pointer",fontFamily:"inherit",transition:"color 0.2s"}}>
-            <span style={{fontSize:20,lineHeight:1}}>{n.icon}</span>
+            <span style={{lineHeight:1}}>{n.svg}</span>
             <span>{n.label}</span>
           </button>
         ))}
